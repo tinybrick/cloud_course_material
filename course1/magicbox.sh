@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-if [ '' == $1 ]; then
+if [[ -z $1 ]]; then
     echo '$0 <interface>'
     exit 1
 fi
