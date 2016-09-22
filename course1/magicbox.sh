@@ -5,10 +5,10 @@ if [ '' == $1 ]; then
     exit 1
 fi
 
-# yum install -y dhcp
+yum install -y dhcp
 
-# yes | cp /usr/lib/systemd/system/dhcpd.service /etc/systemd/system/
-# sed -i 's/\-\-no\-pid/$1/g' /etc/systemd/system/dhcpd.service
+yes | cp /usr/lib/systemd/system/dhcpd.service /etc/systemd/system/
+sed -i 's/\-\-no\-pid/$1/g' /etc/systemd/system/dhcpd.service
 
 DHCP_IP_SELF=172.16.0.1
 
@@ -57,3 +57,6 @@ zone $REV_SUBNET.in-addr.arpa. {
   primary $DHCP_IP_SELF; # This server is the primary reverse DNS for the zone
   key rndc-key;
 }' > /etc/dhcp/dhcpd.conf
+
+systemctl --system daemon-reload
+systemctl restart dhcpd
