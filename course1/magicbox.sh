@@ -65,6 +65,6 @@ function install_dhcp {
       key rndc-key;
     }" > /etc/dhcp/dhcpd.conf
 
-    systemctl --system daemon-reload
-    systemctl restart dhcpd
+#    systemctl --system daemon-reload
+#    systemctl restart dhcpd
 }
