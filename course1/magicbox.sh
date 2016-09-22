@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 if [[ -z $1 ]]; then
-    echo '$0 <interface>'
+    echo "$0 <interface>"
     exit 1
 fi
 
@@ -24,9 +24,9 @@ DOMAIN_NAME=cloud.local.
 MAC_ADDRESS=`ip link show $1 | awk '/link\/ether/{print $2}'`
 REV_SUBNET=$(echo $SUBNET | awk -F. '{for (i=NF-1; i>0; --i) printf "%s%s", $i, (i<NF-2 ? "" : ".")')
 
-echo 'key "rndc-key" {
+echo "key \"rndc-key\" {
         algorithm hmac-md5;
-        secret "/y0Bc7NXafpcCkDrwxhep9XmVtm8Btg9XOOHWYY4DkmjriMr1Rf87Mq0AyEsVquAlknA+btf4mYIUVqr8FGO2g==";
+        secret \"/y0Bc7NXafpcCkDrwxhep9XmVtm8Btg9XOOHWYY4DkmjriMr1Rf87Mq0AyEsVquAlknA+btf4mYIUVqr8FGO2g==\";
 };
 
 default-lease-time 600;
@@ -38,10 +38,10 @@ subnet $SUBNET netmask $NET_MASK {
   range $DHCP_RANGE_FROM $DHCP_RANGE_TO
   option routers $DHCP_OPTION_ROUTES;
   option domain-name-servers $DHCP_DOMAIN_NAME_SERVERS;
-  option domain-name "$DOMAIN_NAME";
+  option domain-name \"$DOMAIN_NAME\";
   option broadcast-address $BROADCAST_ADDRESS;
-  ddns-domainname "$DOMAIN_NAME.";
-  ddns-rev-domainname "in-addr.arpa.";
+  ddns-domainname \"$DOMAIN_NAME.\";
+  ddns-rev-domainname \"in-addr.arpa.\";
   host self {
     hardware ethernet $MAC_ADDRESS;
     fixed-address $DHCP_IP_SELF;
@@ -56,7 +56,7 @@ zone cloud.local. {
 zone $REV_SUBNET.in-addr.arpa. {
   primary $DHCP_IP_SELF; # This server is the primary reverse DNS for the zone
   key rndc-key;
-}' > /etc/dhcp/dhcpd.conf
+}" > /etc/dhcp/dhcpd.conf
 
 systemctl --system daemon-reload
 systemctl restart dhcpd
