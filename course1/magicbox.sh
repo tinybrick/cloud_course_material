@@ -12,7 +12,7 @@ function install_dhcp {
     iptables -A INPUT -p udp -m udp --sport 67 -j ACCEPT
     iptables -A INPUT -p udp -m udp --sport 68 -j ACCEPT
 
-    yum install -y dhcp
+#    yum install -y dhcp
 
     yes | cp /usr/lib/systemd/system/dhcpd.service /etc/systemd/system/
     sed -i 's/\-\-no\-pid/$1/g' /etc/systemd/system/dhcpd.service
@@ -69,7 +69,7 @@ function install_dhcp {
 #    systemctl restart dhcpd
 }
 
-function install_ddns{
+function install_ddns {
     iptables -A INPUT -p udp -m udp --sport 53 -j ACCEPT
     iptables -A INPUT -p udp -m udp --dport 53 -j ACCEPT
 
