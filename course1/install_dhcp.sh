@@ -26,11 +26,7 @@ DOMAIN_NAME=cloud.local.
 MAC_ADDRESS=`ip link show $1 | awk '/link\/ether/{print $2}'`
 REV_SUBNET=$(echo $SUBNET | awk -F. '{for (i=NF-1; i>0; --i) printf "%s%s", $i, (i<NF-2 ? "" : ".")}')
 
-echo "key \"rndc-key\" {
-        algorithm hmac-md5;
-        secret \"/y0Bc7NXafpcCkDrwxhep9XmVtm8Btg9XOOHWYY4DkmjriMr1Rf87Mq0AyEsVquAlknA+btf4mYIUVqr8FGO2g==\";
-};
-
+echo "
 default-lease-time 600;
 max-lease-time 7200;
 ddns-updates on;
