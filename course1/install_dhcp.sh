@@ -57,7 +57,9 @@ zone $REV_SUBNET.in-addr.arpa. {
 }" > /etc/dhcp/dhcpd.conf
 
 systemctl --system daemon-reload
-systemctl restart dhcpd
+systemctl start dhcpd
 
 iptables -A INPUT -p udp -m udp --sport 67 -j ACCEPT
 iptables -A INPUT -p udp -m udp --sport 68 -j ACCEPT
+
+dhclient $1
