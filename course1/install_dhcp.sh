@@ -1,5 +1,9 @@
 #!/usr/bin/env bash
 
+##################################
+# Run command: curl https://raw.githubusercontent.com/tinybrick/cloud_course_material/master/course1/install_dhcp.sh | bash /dev/stdin <interface>
+#
+
 if [[ -z $1 ]]; then
     echo "$0 <interface>"
     exit 1
@@ -31,7 +35,7 @@ echo "
 default-lease-time 600;
 max-lease-time 7200;
 subnet $SUBNET netmask $NET_MASK {
-    range $DHCP_RANGE_FROM $DHCP_RANGE_TO
+    range $DHCP_RANGE_FROM $DHCP_RANGE_TO;
     option routers $DHCP_OPTION_ROUTES;
     option domain-name-servers $DHCP_DOMAIN_NAME_SERVERS;
     option domain-name \"$DOMAIN_NAME\";
@@ -42,10 +46,14 @@ subnet $SUBNET netmask $NET_MASK {
     }
 }" > /etc/dhcp/dhcpd.conf
 
-systemctl --system daemon-reload
+dhcpd -t -cf /etc/dhcp/dhcpd.conf
+if [ ! 0 = $? ]; then
+    echo "Configuration file incorrect, installation abort"
+    exit 1
+fi
+
+systemctl enable dhcpd
 systemctl start dhcpd
 
 iptables -A INPUT -p udp -m udp --sport 67 -j ACCEPT
 iptables -A INPUT -p udp -m udp --sport 68 -j ACCEPT
-
-dhclient $1
