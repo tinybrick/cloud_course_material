@@ -84,17 +84,19 @@ yes | cp /usr/lib/systemd/system/dhcpd.service /etc/systemd/system/
 sed -i "s/\-\-no\-pid/$1/g" /etc/systemd/system/dhcpd.service
 
 echo Setup IP information...
-DHCP_IP_SELF=`ip addr show dev $1 | awk '/inet\ /{print $2}' | awk -F/ '{print $1}'`
-BROADCAST_ADDRESS=`ip addr show dev $1 | awk '/inet\ /{print $4}' | awk -F/ '{print $1}'`
-NET_MASK="$(INET_NTOA "$((4294967296-(1 << (32 - `ip addr show dev enp0s8 | awk '/inet\ /{print $2}' | awk -F/ '{print $2}'`))))")"
-SUBNET="$(GET_SUBNET $DHCP_IP_SELF $NET_MASK)"
-MAC_ADDRESS=`ip link show $1 | awk '/link\/ether/{print $2}'`
-
+INTERFACE=$1
 DHCP_RANGE_FROM=$2
 DHCP_RANGE_TO=$3
 DOMAIN_NAME=$4.
-DHCP_DOMAIN_NAME_SERVERS=8.8.8.8
-DHCP_OPTION_ROUTES=$DHCP_IP_SELF
+DHCP_DOMAIN_NAME_SERVERS="8.8.8.8"
+
+DHCP_IP_SELF=`ip addr show dev $INTERFACE | awk '/inet\ /{print $2}' | awk -F/ '{print $1}'`
+BROADCAST_ADDRESS=`ip addr show dev $INTERFACE | awk '/inet\ /{print $4}' | awk -F/ '{print $1}'`
+SUBNET_SHORT_FORMAT=`ip addr show dev $INTERFACE | awk '/inet\ /{print $2}' | awk -F/ '{print $2}'`
+NET_MASK="$(INET_NTOA "$((4294967296-(1 << (32 - $SUBNET_SHORT_FORMAT))))")"
+SUBNET="$(GET_SUBNET $DHCP_IP_SELF $NET_MASK)"
+MAC_ADDRESS=`ip link show $INTERFACE | awk '/link\/ether/{print $2}'`
+DHCP_OPTION_ROUTES=`ip route get $SUBNET/$SUBNET_SHORT_FORMAT | awk "/$0\ /{print $6}"`
 
 REV_SUBNET=$(echo $SUBNET | awk -F. '{for (i=NF-1; i>0; --i) printf "%s%s", $i, (i<NF-2 ? "" : ".")}')
 
@@ -125,3 +127,9 @@ systemctl start dhcpd
 
 iptables -A INPUT -p udp -m udp --sport 67 -j ACCEPT
 iptables -A INPUT -p udp -m udp --sport 68 -j ACCEPT
+
+if [ -f "/etc/dhcp/dhcpd.conf" ]; then
+    cat /etc/dhcp/dhcpd.conf
+fi;
+
+echo "DHCP server install success"
