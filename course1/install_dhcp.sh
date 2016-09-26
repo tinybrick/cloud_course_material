@@ -1,5 +1,4 @@
 #!/usr/bin/env bash
-
 ##################################
 # Run command:
 #  $ sudo curl https://raw.githubusercontent.com/tinybrick/cloud_course_material/master/course1/install_dhcp.sh | bash /dev/stdin <interface>
@@ -10,68 +9,45 @@ if [[ -z $4 ]]; then
     exit 1
 fi
 
-INET_NTOA() {
-    local IFS=. num quad ip e
-    num=$1
-    for e in 3 2 1
-    do
-        (( quad = 256 ** e))
-        (( ip[3-e] = num / quad ))
-        (( num = num % quad ))
-    done
-    ip[3]=$num
-    echo "${ip[*]}"
-}
-
-INET_ATON ()
+ip2int()
 {
-    local IFS=. ip num e
-    ip=($1)
-    for e in 3 2 1
-    do
-        (( num += ip[3-e] * 256 ** e ))
+    local a b c d
+    { IFS=. read a b c d; } <<< $1
+    echo $(((((((a << 8) | b) << 8) | c) << 8) | d))
+}
+
+int2ip()
+{
+    local ui32=$1; shift
+    local ip n
+    for n in 1 2 3 4; do
+        ip=$((ui32 & 0xff))${ip:+.}$ip
+        ui32=$((ui32 >> 8))
     done
-    (( num += ip[3] ))
-    echo "$num"
+    echo $ip
 }
 
-GET_SUBNET() {
-    if [ -z $2 ]; then
-       echo Usage: $0 [ip] [netmask]
-       exit 1
-    fi
-
-    IP="$1"
-    NM="$2"
-
-    #
-    n="${NM%.*}";m="${NM##*.}"
-    l="${IP%.*}";r="${IP##*.}";c=""
-    if [ "$m" = "0" ]; then
-       c=".0"
-       m="${n##*.}";n="${n%.*}"
-       r="${l##*.}";l="${l%.*}"
-       if [ "$m" = "0" ]; then
-          c=".0$c"
-          m="${n##*.}";n="${n%.*}"
-          r="${l##*.}";l="${l%.*}"
-          if [ "$m" = "0" ]; then
-             c=".0$c"
-             m=$n
-             r=$l;l=""
-          fi
-       fi
-    fi
-    let s=256-$m
-    let r=$r/$s*$s
-    if [ "$l" ]; then
-       SNW="$l.$r$c"
-    else
-       SNW="$r$c"
-    fi
-    #
-    echo $SNW
+netmask()
+{
+    local mask=$((0xffffffff << (32 - $1)))
+    int2ip $mask
 }
+
+
+broadcast()
+{
+    local addr=$(ip2int $1)
+    local mask=$((0xffffffff << (32 - $2)))
+    int2ip $((addr | ~mask))
+}
+
+get_subnet()
+{
+    local addr=$(ip2int $1)
+    local mask=$((0xffffffff << (32 -$2)))
+    int2ip $((addr & mask))
+}
+
 
 DHCP_CONFIG_FILE=/etc/dhcp/dhcpd.conf
 
@@ -93,14 +69,12 @@ DOMAIN_NAME=$4.
 DHCP_DOMAIN_NAME_SERVERS="8.8.8.8"
 
 DHCP_IP_SELF=`ip addr show dev $INTERFACE | awk '/inet\ /{print $2}' | awk -F/ '{print $1}'`
-BROADCAST_ADDRESS=`ip addr show dev $INTERFACE | awk '/inet\ /{print $4}' | awk -F/ '{print $1}'`
-SUBNET_SHORT_FORMAT=`ip addr show dev $INTERFACE | awk '/inet\ /{print $2}' | awk -F/ '{print $2}'`
-NET_MASK="$(INET_NTOA "$((4294967296-(1 << (32 - $SUBNET_SHORT_FORMAT))))")"
-SUBNET="$(GET_SUBNET $DHCP_IP_SELF $NET_MASK)"
+NET_MASK_SHORT_FORMAT=`ip addr show dev $INTERFACE | awk '/inet\ /{print $2}' | awk -F/ '{print $2}'`
+NET_MASK=$(netmask $NET_MASK_SHORT_FORMAT)
+SUBNET="$(get_subnet $DHCP_IP_SELF $NET_MASK_SHORT_FORMAT)"
 MAC_ADDRESS=`ip link show $INTERFACE | awk '/link\/ether/{print $2}'`
-#DHCP_OPTION_ROUTES=`ip route get $SUBNET/$SUBNET_SHORT_FORMAT | awk "/$0\ /{print $6}"`
-DHCP_OPTION_ROUTES=`ip route get $SUBNET/$SUBNET_SHORT_FORMAT | awk '/'$INTERFACE'\ /{print $6}'`
-
+DHCP_OPTION_ROUTES=`ip route get $SUBNET/$NET_MASK_SHORT_FORMAT | awk '/'$INTERFACE'\ /{print $6}'`
+BROADCAST_ADDRESS=`ip addr show dev $INTERFACE | awk '/inet\ /{print $4}' | awk -F/ '{print $1}'`
 REV_SUBNET=$(echo $SUBNET | awk -F. '{for (i=NF-1; i>0; --i) printf "%s%s", $i, (i<NF-2 ? "" : ".")}')
 
 if [ -f $DHCP_CONFIG_FILE ]; then
