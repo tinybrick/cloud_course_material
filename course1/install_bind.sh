@@ -1,5 +1,4 @@
 #!/usr/bin/env sh
-
 ################################################################################
 # Run command:
 #  $ sudo curl https://raw.githubusercontent.com/tinybrick/cloud_course_material/master/course1/install_bind.sh | bash /dev/stdin [interface] [domain_name]
@@ -10,16 +9,17 @@ if [ -z $1 ] || [ -z $2 ]; then
     exit 1
 fi
 
-REPLACE() {
-    if grep -Fxq "$2" $1
+update_or_append() {
+    if grep -q "$2" $1
     then
-        sed -i "s/$2/\1$3/g" $1
+        sed -i "s/\($2\s*\)\w.*/\1$3/g" $1
     else
-        echo "$2 NOT FOUND in $1"
+        sed -i "\$a$2 $3" $1
     fi
 }
 
-APPEND_IF_NOT_EXISTS() {
+
+append_if_not_exist() {
     if grep -Fq "$3" $1
     then
         echo "$3 is found, not gonna insert again"
@@ -28,7 +28,7 @@ APPEND_IF_NOT_EXISTS() {
     fi
 }
 
-INSERT_IF_NOT_EXIST() {
+insert_if_not_exist() {
     if grep -Fq "$3" $1
     then
         echo "$3 is found, not gonna insert again"
@@ -60,19 +60,15 @@ if [ ! 0 = $? ]; then
     exit 3
 fi
 
-# sed -i "s/\(recursion\s*\)\w.*$/\1yes;/g" /etc/named.conf
-REPLACE $NAMED_CONFIG_FILE "\(recursion\s*\)\w.*$" "yes;"
-#sed -i "s/\(dnssec-validation\s*\)\w.*$/\1no;/g" /etc/named.conf
-REPLACE $NAMED_CONFIG_FILE "\(dnssec-validation\s*\)\w.*$" "no;"
-#sed -i "/options/a\ \tforwarders {\n\t\t$SUPERIOR_DNS;\n\t};" /etc/named.conf
-APPEND_IF_NOT_EXISTS $NAMED_CONFIG_FILE "options {" "\tforwarders{\n\t\t$SUPERIOR_DNS;\n\t};"
-#sed -i '/^zone\s"."/i\ zone "'$REV_SUBNET'.in-addr.arpa" {\n\ttype master;\n\tfile "db.'$REV_SUBNET'";\n};' /etc/named.conf
-INSERT_IF_NOT_EXIST $NAMED_CONFIG_FILE "^zone\s\".\"" "zone \"$REV_SUBNET.in-addr.arpa\" {\n\ttype master;\n\tfile \"db.$REV_SUBNET\";\n};\n"
-#sed '/^zone\s'$REV_SUBNET'/i\ zone "'$DOMAIN_NAME'" {\n\ttype master;\n\tfile "db.'$DOMAIN_NAME'";\n};\n' /etc/named.conf
-INSERT_IF_NOT_EXIST $NAMED_CONFIG_FILE "^zone\s\"$REV_SUBNET" "zone \"$DOMAIN_NAME\" {\n\ttype master;\n\tfile \"db.$DOMAIN_NAME\";\n};\n"
+update_or_append $NAMED_CONFIG_FILE "recursion" "yes;"
+update_or_append $NAMED_CONFIG_FILE "dnssec-validation" "no;"
+append_if_not_exist $NAMED_CONFIG_FILE "options {" "\tforwarders {\n\t\t$SUPERIOR_DNS;\n\t};"
+insert_if_not_exist $NAMED_CONFIG_FILE "^zone\s\".\"" "zone \"$REV_SUBNET.in-addr.arpa\" {\n\ttype master;\n\tfile \"db.$REV_SUBNET\";\n};\n"
+insert_if_not_exist $NAMED_CONFIG_FILE "^zone\s\"$REV_SUBNET" "zone \"$DOMAIN_NAME\" {\n\ttype master;\n\tfile \"db.$DOMAIN_NAME\";\n};\n"
 
 /usr/sbin/named-checkconf $NAMED_CONFIG_FILE
 if [ ! 0 = $? ]; then
+    cat $NAMED_CONFIG_FILE
     echo $NAMED_CONFIG_FILE " file contains error"
     yes | cp $NAMED_CONFIG_FILE.bak $NAMED_CONFIG_FILE
     exit 4
