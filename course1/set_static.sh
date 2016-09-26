@@ -5,7 +5,7 @@
 #
 
 if [[ -z $3 ]]; then
-    echo "$0 [interface] [ip] [net_mask]"
+    echo "$0 [interface] [ip] [net_mask_short]"
     exit 1
 fi
 
