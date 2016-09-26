@@ -73,6 +73,8 @@ GET_SUBNET() {
     echo $SNW
 }
 
+DHCP_CONFIG_FILE=/etc/dhcp/dhcpd.conf
+
 yum install -y dhcp
 if [ ! 0 = $? ]; then
     echo "DHCP package install failed, installation aborted"
@@ -96,12 +98,16 @@ SUBNET_SHORT_FORMAT=`ip addr show dev $INTERFACE | awk '/inet\ /{print $2}' | aw
 NET_MASK="$(INET_NTOA "$((4294967296-(1 << (32 - $SUBNET_SHORT_FORMAT))))")"
 SUBNET="$(GET_SUBNET $DHCP_IP_SELF $NET_MASK)"
 MAC_ADDRESS=`ip link show $INTERFACE | awk '/link\/ether/{print $2}'`
-DHCP_OPTION_ROUTES=`ip route get $SUBNET/$SUBNET_SHORT_FORMAT | awk "/$0\ /{print $6}"`
+#DHCP_OPTION_ROUTES=`ip route get $SUBNET/$SUBNET_SHORT_FORMAT | awk "/$0\ /{print $6}"`
+DHCP_OPTION_ROUTES=`ip route get $SUBNET/$SUBNET_SHORT_FORMAT | awk '/'$INTERFACE'\ /{print $6}'`
 
 REV_SUBNET=$(echo $SUBNET | awk -F. '{for (i=NF-1; i>0; --i) printf "%s%s", $i, (i<NF-2 ? "" : ".")}')
 
-echo "
-default-lease-time 600;
+if [ -f $DHCP_CONFIG_FILE ]; then
+    yes | cp $DHCP_CONFIG_FILE $DHCP_CONFIG_FILE.bak
+fi
+
+echo "default-lease-time 600;
 max-lease-time 7200;
 subnet $SUBNET netmask $NET_MASK {
     range $DHCP_RANGE_FROM $DHCP_RANGE_TO;
@@ -117,8 +123,13 @@ subnet $SUBNET netmask $NET_MASK {
 
 dhcpd -t -cf /etc/dhcp/dhcpd.conf
 if [ ! 0 = $? ]; then
+    if [ -f $DHCP_CONFIG_FILE.bak ]; then
+        yes | cp $DHCP_CONFIG_FILE.bak $DHCP_CONFIG_FILE
+    else
+        rm -f /etc/dhcp/dhcpd.conf
+    fi
+
     echo "Configuration file incorrect, installation aborted"
-    rm -f /etc/dhcp/dhcpd.conf
     exit 3
 fi
 
@@ -127,9 +138,5 @@ systemctl start dhcpd
 
 iptables -A INPUT -p udp -m udp --sport 67 -j ACCEPT
 iptables -A INPUT -p udp -m udp --sport 68 -j ACCEPT
-
-if [ -f "/etc/dhcp/dhcpd.conf" ]; then
-    cat /etc/dhcp/dhcpd.conf
-fi;
 
 echo "DHCP server install success"
