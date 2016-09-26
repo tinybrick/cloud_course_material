@@ -65,7 +65,7 @@ NET_MASK=$(netmask $3)
 SUBNET=$(get_subnet $IP_ADDR $3)
 BROADCAST=$(broadcast $IP_ADDR $3)
 
-echo "Setup interface $0"
+echo "Setup interface $1"
 update_or_append $CONFIG_FILE_PATH/$CONFIG_FILE_PREFIX-$1 "BOOTPROTO" "static"
 update_or_append $CONFIG_FILE_PATH/$CONFIG_FILE_PREFIX-$1 "IPADDR" "$IP_ADDR"
 update_or_append $CONFIG_FILE_PATH/$CONFIG_FILE_PREFIX-$1 "NETMASK" "$NET_MASK"
